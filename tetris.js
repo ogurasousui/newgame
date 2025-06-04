@@ -2,6 +2,17 @@ const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 context.scale(20, 20);
 
+const {Engine, Bodies, World} = Matter;
+const engine = Engine.create();
+const physicsBlocks = [];
+
+// Create static boundaries for the physics world
+World.add(engine.world, [
+    Bodies.rectangle(6, 20.5, 12, 1, {isStatic: true}),
+    Bodies.rectangle(-0.5, 10, 1, 20, {isStatic: true}),
+    Bodies.rectangle(12.5, 10, 1, 20, {isStatic: true}),
+]);
+
 function arenaSweep() {
     outer: for (let y = arena.length - 1; y > 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
@@ -94,8 +105,20 @@ function draw() {
     context.fillStyle = '#000';
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    drawMatrix(arena, {x:0, y:0});
+    drawPhysics();
     drawMatrix(player.matrix, player.pos);
+}
+
+function drawPhysics() {
+    physicsBlocks.forEach(obj => {
+        const {position, angle} = obj.body;
+        context.save();
+        context.translate(position.x, position.y);
+        context.rotate(angle);
+        context.fillStyle = obj.color;
+        context.fillRect(-0.5, -0.5, 1, 1);
+        context.restore();
+    });
 }
 
 function drawMatrix(matrix, offset) {
@@ -116,6 +139,23 @@ function merge(arena, player) {
         row.forEach((value, x) => {
             if (value !== 0) {
                 arena[y + player.pos.y][x + player.pos.x] = value;
+            }
+        });
+    });
+
+    spawnPhysics(player.matrix, player.pos);
+}
+
+function spawnPhysics(matrix, offset) {
+    matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                const body = Bodies.rectangle(x + offset.x + 0.5,
+                                             y + offset.y + 0.5,
+                                             1, 1,
+                                             { restitution: 0.1, friction: 0.05 });
+                World.add(engine.world, body);
+                physicsBlocks.push({body, color: colors[value]});
             }
         });
     });
@@ -192,6 +232,8 @@ let lastTime = 0;
 function update(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
+
+    Engine.update(engine, deltaTime);
 
     dropCounter += deltaTime;
     if (dropCounter > dropInterval) {
