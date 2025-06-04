@@ -263,13 +263,33 @@ const player = {
     matrix: null,
 };
 
+let lastDownPress = 0;
+const doublePressThreshold = 250; // ms
+
+function playerHardDrop() {
+    while (!collide(arena, player)) {
+        player.pos.y++;
+    }
+    player.pos.y--;
+    merge(arena, player);
+    playerReset();
+    arenaSweep();
+    dropCounter = 0;
+}
+
 document.addEventListener('keydown', event => {
     if (event.keyCode === 37) {
         playerMove(-1);
     } else if (event.keyCode === 39) {
         playerMove(1);
     } else if (event.keyCode === 40) {
-        playerDrop();
+        const now = performance.now();
+        if (now - lastDownPress < doublePressThreshold) {
+            playerHardDrop();
+        } else {
+            playerDrop();
+        }
+        lastDownPress = now;
     } else if (event.keyCode === 81) {
         playerRotate(-1);
     } else if (event.keyCode === 38 || event.keyCode === 87) {
