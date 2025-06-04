@@ -111,13 +111,16 @@ function draw() {
 
 function drawPhysics() {
     physicsBlocks.forEach(obj => {
-        const {position, angle} = obj.body;
-        context.save();
-        context.translate(position.x, position.y);
-        context.rotate(angle);
-        context.fillStyle = obj.color;
-        context.fillRect(-0.5, -0.5, 1, 1);
-        context.restore();
+        const parts = obj.body.parts.length > 1 ? obj.body.parts.slice(1) : obj.body.parts;
+        parts.forEach(part => {
+            const { position, angle } = part;
+            context.save();
+            context.translate(position.x, position.y);
+            context.rotate(angle);
+            context.fillStyle = obj.color;
+            context.fillRect(-0.5, -0.5, 1, 1);
+            context.restore();
+        });
     });
 }
 
@@ -147,18 +150,32 @@ function merge(arena, player) {
 }
 
 function spawnPhysics(matrix, offset) {
+    const parts = [];
+    let pieceValue = 0;
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                const body = Bodies.rectangle(x + offset.x + 0.5,
-                                             y + offset.y + 0.5,
-                                             1, 1,
-                                             { restitution: 0.1, friction: 0.05 });
-                World.add(engine.world, body);
-                physicsBlocks.push({body, color: colors[value]});
+                const part = Bodies.rectangle(
+                    x + offset.x + 0.5,
+                    y + offset.y + 0.5,
+                    1,
+                    1
+                );
+                parts.push(part);
+                pieceValue = value;
             }
         });
     });
+
+    if (parts.length) {
+        const body = Matter.Body.create({
+            parts,
+            restitution: 0.1,
+            friction: 0.05,
+        });
+        World.add(engine.world, body);
+        physicsBlocks.push({body, color: colors[pieceValue]});
+    }
 }
 
 function playerDrop() {
